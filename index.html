@@ -478,9 +478,7 @@
     SONGS.forEach((song, i) => {
         const btn = document.createElement('button');
         btn.className = 'song-btn';
-        btn.innerHTML = `
-            <span class="btn-num">${ROMAN[i]}</span>
-            <span class="btn-name">${song.name}</span>`;
+        btn.innerHTML = `<span class="btn-num">${ROMAN[i]}</span>`;
         btn.addEventListener('click',      () => handleClick(song, btn));
         btn.addEventListener('touchstart', () => {}, { passive: true });
         grid.appendChild(btn);
