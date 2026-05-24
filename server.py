@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
 Запуск: python3 server.py
-Приложение:  http://localhost:8787/
-Админка:     http://localhost:8787/admin.html
+Переменные окружения:
+  HOST=0.0.0.0   адрес прослушивания  (по умолчанию 0.0.0.0)
+  PORT=8787      порт                  (по умолчанию 8787)
 """
 import os, json, urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
-PORT     = 8787
-HOST     = '0.0.0.0'
+PORT     = int(os.environ.get('PORT', 8787))
+HOST     = os.environ.get('HOST', '0.0.0.0')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SOUND    = os.path.join(BASE_DIR, 'sound')
 
@@ -98,8 +99,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.makedirs(SOUND, exist_ok=True)
-    print(f'\n  Сервер запущен → http://localhost:{PORT}/')
-    print(f'  Приложение     → http://localhost:{PORT}/index.html')
-    print(f'  Админка        → http://localhost:{PORT}/admin.html')
+    display = 'localhost' if HOST in ('0.0.0.0', '') else HOST
+    print(f'\n  HOST={HOST}  PORT={PORT}')
+    print(f'  Сервер запущен → http://{display}:{PORT}/')
+    print(f'  Приложение     → http://{display}:{PORT}/index.html')
+    print(f'  Админка        → http://{display}:{PORT}/admin.html')
     print(f'  Остановить: Ctrl+C\n')
     HTTPServer((HOST, PORT), Handler).serve_forever()
