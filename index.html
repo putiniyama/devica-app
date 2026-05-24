@@ -1,1026 +1,114 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>ДЕВИЦА</title>
-    <style>
-        @font-face {
-            font-family: 'Ruslan';
-            src: url('RuslanDisplay.ttf') format('truetype');
-            font-display: swap;
-        }
-
-        :root {
-            --red:      #F71015;
-            --black:    #000000;
-            --white:    #FFFFFF;
-            --red-glow: rgba(247,16,21,0.5);
-            --red-dim:  rgba(247,16,21,0.12);
-            --CIRC:     289px; /* 2π×46, used in SVG ring */
-        }
-
-        *, *::before, *::after {
-            margin: 0; padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none; -webkit-user-select: none;
-            -webkit-appearance: none; appearance: none;
-        }
-
-        html, body {
-            width: 100vw; height: 100dvh;
-            overflow: hidden;
-            background: var(--black);
-            font-family: 'Ruslan', Georgia, serif;
-        }
-
-        body { opacity: 0; animation: fadeIn .6s ease .1s forwards; }
-        @keyframes fadeIn { to { opacity: 1; } }
-
-        /* ══ LAYOUT ══ */
-        .app {
-            position: fixed; inset: 0;
-            display: flex; flex-direction: column;
-        }
-
-        .left {
-            flex: 1; min-height: 0;
-            display: flex; flex-direction: column;
-            padding: 2.5vmin 3.5vmin 1.5vmin;
-            gap: 1.2vmin;
-            overflow: hidden;
-            background: var(--black);
-            position: relative;
-        }
-
-        /* ══ УГЛОВАЯ ИЛЛЮСТРАЦИЯ ══ */
-        .woman-corner {
-            position: fixed;
-            bottom: 0; right: 0;
-            height: 65vh; width: auto;
-            pointer-events: none;
-            mix-blend-mode: screen;
-            opacity: 0.82;
-            z-index: 1;
-        }
-
-        /* ══ ЗАГОЛОВОК ══ */
-        .header {
-            flex-shrink: 0;
-            text-align: center;
-        }
-
-        .title {
-            font-size: clamp(28px, 9.5vmin, 90px);
-            color: var(--red);
-            letter-spacing: .06em;
-            text-shadow: 0 0 18px rgba(247,16,21,.55), 0 0 50px rgba(247,16,21,.2);
-            line-height: .95;
-        }
-
-        .subtitle {
-            font-size: clamp(9px, 1.5vmin, 15px);
-            color: rgba(255,255,255,.3);
-            letter-spacing: .32em;
-            text-transform: uppercase;
-            margin-top: .4vmin;
-        }
-
-        /* ══ РАЗДЕЛИТЕЛЬ ══ */
-        .divider {
-            flex-shrink: 0; height: 1px;
-            background: linear-gradient(to right, var(--red), transparent);
-            opacity: .35;
-        }
-
-        /* ══ СЕЙЧАС ИГРАЕТ (под эквалайзером) ══ */
-        .now-playing {
-            flex-shrink: 0;
-            padding: 0 .5vmin;
-            position: relative; z-index: 2;
-        }
-        .np-info {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 2vmin;
-            margin-bottom: .65vmin;
-            min-height: clamp(14px, 2.4vmin, 22px); /* фиксированная высота — верстка не прыгает */
-        }
-        .np-name {
-            font-family: 'Ruslan', Georgia, serif;
-            font-size: clamp(10px, 1.9vmin, 18px);
-            color: rgba(255,255,255,.28);
-            letter-spacing: .1em;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            flex: 1;
-            transition: color .35s, text-shadow .35s;
-        }
-        .np-name.active {
-            color: var(--red);
-            text-shadow: 0 0 10px var(--red-glow);
-        }
-        .np-time {
-            font-family: 'Courier New', monospace;
-            font-size: clamp(9px, 1.45vmin, 13px);
-            color: rgba(255,255,255,.2);
-            flex-shrink: 0;
-            letter-spacing: .04em;
-            transition: color .35s;
-        }
-        .np-time.active { color: rgba(247,16,21,.7); }
-
-        /* прогресс-полоска */
-        .np-bar {
-            width: 100%; height: 2px;
-            background: rgba(255,255,255,.06);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-        .np-bar::before {
-            content: ''; position: absolute; inset: -5px;
-        }
-        .np-fill {
-            height: 100%; width: 0%;
-            background: linear-gradient(to right, rgba(247,16,21,.9), var(--red));
-            border-radius: 2px;
-            transition: width .3s linear;
-            position: relative;
-        }
-        .np-fill::after {
-            content: '';
-            position: absolute; right: -3px; top: 50%;
-            transform: translateY(-50%);
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--white);
-            box-shadow: 0 0 5px var(--red-glow);
-            opacity: 0; transition: opacity .25s;
-        }
-        .np-name.active ~ * .np-fill::after,
-        .np-fill.has-dot::after { opacity: 1; }
-
-        /* ══ ВИЗУАЛИЗАТОР ══ */
-        .visualizer {
-            flex-shrink: 0;
-            height: clamp(28px, 5.5vh, 65px);
-            display: flex;
-            align-items: stretch;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 1vmin;
-            position: relative; z-index: 2;
-            background: #000;
-        }
-        .viz-bar {
-            flex: 1;
-            max-width: clamp(6px, 1.35vmin, 14px);
-            background-image: url('images/береза.png');
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
-            mix-blend-mode: screen;
-            border-radius: 2px 2px 0 0;
-            clip-path: inset(100% 0 0 0); /* шторка снизу — без сжатия */
-            opacity: 0;
-            will-change: clip-path;
-        }
-        .visualizer.active .viz-bar { opacity: 1; }
-
-        /* ══ ОБЁРТКА КНОПОК ══ */
-        .buttons-wrapper {
-            flex: 1; min-height: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative; z-index: 2;
-        }
-
-        /* ══ СЕТКА КНОПОК ══ */
-        .buttons-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 2.2vmin;
-            width:  min(86vw, 50vh);
-            height: min(86vw, 50vh);
-        }
-
-        /* ══ КНОПКА ПЕСНИ ══ */
-        .song-btn {
-            width: 100%; height: 100%;
-            border-radius: 50%;
-            border: 2px solid rgba(247,16,21,.5);
-            background: rgba(247,16,21,.05);
-            cursor: pointer;
-            position: relative; outline: none;
-            touch-action: manipulation;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            overflow: visible; /* кольцо выходит за пределы кнопки */
-            transition: border-color .15s, background .15s, transform .1s;
-        }
-        .song-btn::before {
-            content: ''; position: absolute; inset: 12%;
-            border-radius: 50%;
-            border: 1px solid rgba(247,16,21,.2);
-            pointer-events: none;
-            transition: border-color .15s;
-        }
-
-        /* SVG кольцо прогресса */
-        .progress-ring {
-            position: absolute; inset: -5px;
-            width: calc(100% + 10px);
-            height: calc(100% + 10px);
-            transform: rotate(-90deg);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity .4s;
-        }
-        .song-btn.playing .progress-ring { opacity: 1; }
-        .ring-bg   { fill: none; stroke: rgba(247,16,21,.15); stroke-width: 2.5; }
-        .ring-fill {
-            fill: none;
-            stroke: var(--red); stroke-width: 4;
-            stroke-linecap: round;
-            stroke-dasharray: 283;   /* 2π×45 ≈ 283 */
-            stroke-dashoffset: 283;
-            filter: drop-shadow(0 0 4px rgba(247,16,21,.9));
-        }
-
-        .btn-num {
-            font-family: 'Ruslan', Georgia, serif;
-            font-size: clamp(14px, 6vmin, 58px);
-            color: var(--white); line-height: 1;
-            text-shadow: 0 1px 6px rgba(0,0,0,.9);
-            transition: color .15s, text-shadow .15s;
-            position: relative; z-index: 1;
-        }
-
-        /* Нажатие */
-        .song-btn:active { transform: scale(.91); }
-
-        /* Играет */
-        .song-btn.playing {
-            background: var(--red);
-            border-color: var(--red);
-            animation: btn-glow 2s ease-in-out infinite;
-        }
-        .song-btn.playing::before { border-color: rgba(255,255,255,.35); }
-        .song-btn.playing .btn-num { text-shadow: 0 0 1.5vmin rgba(255,255,255,.6); }
-
-        @keyframes btn-glow {
-            0%,100% { box-shadow: 0 0 3vmin rgba(247,16,21,.7),  0 0 7vmin rgba(247,16,21,.25); }
-            50%      { box-shadow: 0 0 5vmin rgba(247,16,21,.95), 0 0 12vmin rgba(247,16,21,.4); }
-        }
-
-        /* Загрузка */
-        .song-btn.loading .btn-num { opacity: .25; }
-        .song-btn.loading::after {
-            content: ''; position: absolute; inset: 18%;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top-color: var(--red);
-            animation: spin .75s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-
-        /* ══ ПАНЕЛЬ УПРАВЛЕНИЯ ══ */
-        .controls {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 3.5vmin;
-            position: relative; z-index: 2;
-        }
-        .icon-btn {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,.18);
-            border-radius: 50%;
-            width:  clamp(34px, 6.5vmin, 52px);
-            height: clamp(34px, 6.5vmin, 52px);
-            font-size: clamp(15px, 2.8vmin, 24px);
-            color: rgba(255,255,255,.22);
-            cursor: pointer; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            transition: color .3s, border-color .3s, text-shadow .3s, transform .1s;
-            touch-action: manipulation;
-        }
-        .icon-btn.active {
-            color: rgba(255,255,255,.88);
-            border-color: rgba(255,255,255,.55);
-            text-shadow: 0 0 10px rgba(255,255,255,.75);
-        }
-        .icon-btn.stop-icon {
-            border-color: rgba(247,16,21,.3);
-            color: rgba(247,16,21,.4);
-            font-size: clamp(12px, 2.2vmin, 20px);
-        }
-        .icon-btn.stop-icon:active {
-            background: rgba(247,16,21,.15);
-            color: var(--red); border-color: var(--red);
-            box-shadow: 0 0 14px rgba(247,16,21,.35);
-            transform: scale(.93);
-        }
-
-        /* ══ ПОДВАЛ ══ */
-        .footer {
-            flex-shrink: 0;
-            display: flex; align-items: center;
-            justify-content: center;
-            position: relative; z-index: 2;
-        }
-        .footer-center { display: flex; align-items: center; gap: 1.5vmin; }
-        .footer-ring {
-            height: 5.5vmin; width: 5.5vmin;
-            object-fit: contain;
-            filter: brightness(0) invert(1); opacity: .28;
-        }
-        .footer-text {
-            font-size: clamp(8px, 1.3vmin, 13px);
-            color: rgba(255,255,255,.55);
-            letter-spacing: .15em; text-transform: uppercase;
-            font-family: Georgia, serif;
-        }
-        .qr-wrap {
-            position: absolute; right: 0;
-            background: var(--white);
-            border-radius: .6vmin;
-            padding: .5vmin; line-height: 0;
-        }
-        .qr-img { display: block; width: 7vmin; height: 7vmin; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<div class="app">
-    <div class="left">
+    <div class="app">
+        <div class="left">
 
-        <!-- иллюстрация-декор -->
-        <img class="woman-corner" src="images/1.png" alt="">
+            <!-- иллюстрация-декор -->
+            <img class="woman-corner" src="images/1.png" alt="">
 
-        <!-- заголовок -->
-        <div class="header">
-            <div class="title">ДЕВИЦА</div>
-            <div class="subtitle">Старорусские Напевы</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- визуализатор -->
-        <div class="visualizer" id="visualizer"></div>
-
-        <!-- название + время + полоска под эквалайзером -->
-        <div class="now-playing">
-            <div class="np-info">
-                <span class="np-name" id="dispSong">— Выберите песню —</span>
-                <span class="np-time" id="dispTime">--:--</span>
+            <!-- заголовок -->
+            <div class="header">
+                <div class="title">ДЕВИЦА</div>
+                <div class="subtitle">СЛУШАЙ РОССИЮ</div>
             </div>
-            <div class="np-bar" id="progressBar">
-                <div class="np-fill" id="progressFill" style="width:0%"></div>
+
+            <div class="divider"></div>
+
+            <!-- визуализатор -->
+            <div class="visualizer" id="visualizer"></div>
+
+            <!-- название + время + полоска под эквалайзером -->
+            <div class="now-playing">
+                <div class="np-info">
+                    <span class="np-name" id="dispSong">— Выберите песню —</span>
+                    <span class="np-time" id="dispTime">--:--</span>
+                </div>
+                <div class="np-bar" id="progressBar">
+                    <div class="np-fill" id="progressFill" style="width:0%"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- кнопки -->
-        <div class="buttons-wrapper">
-            <div class="buttons-grid" id="grid"></div>
-        </div>
-
-        <!-- кнопки управления -->
-        <div class="controls">
-            <button class="icon-btn" id="snowBtn"   title="Снег">❄</button>
-            <button class="icon-btn stop-icon" id="stopBtn" title="Остановить">◼</button>
-            <button class="icon-btn" id="leavesBtn"    title="Листья">🍂</button>
-            <button class="icon-btn" id="ornamentsBtn" title="Узоры">✾</button>
-            <button class="icon-btn" id="wakeLockBtn" title="Экран не гаснет">☀</button>
-        </div>
-
-        <div class="footer">
-            <div class="footer-center">
-                <img class="footer-ring" src="images/3.png" alt="">
-                <span class="footer-text">Школа Креативных Индустрий, г. Нестеров</span>
+            <!-- кнопки -->
+            <div class="buttons-wrapper">
+                <div class="buttons-grid" id="grid"></div>
             </div>
-            <div class="qr-wrap">
-                <img class="qr-img" src="images/2.png" alt="VK QR">
-            </div>
-        </div>
 
+            <div class="footer">
+                <div class="footer-btns">
+                    <button class="icon-btn" id="settingsBtn" title="Настройки">⚙</button>
+                    <button class="icon-btn stop-icon" id="stopBtn" title="Остановить">◼</button>
+                </div>
+                <div class="footer-center">
+                    <img class="footer-ring" src="images/3.png" alt="">
+                    <span class="footer-text">Школа Креативных Индустрий, г. Нестеров</span>
+                </div>
+                <div class="qr-wrap">
+                    <img class="qr-img" src="images/2.png" alt="VK QR">
+                </div>
+            </div>
+
+        </div>
     </div>
-</div>
 
-<script>
-/* ══ НАСТРОЙКА ══ */
-const SONGS = Array.from({length: 9}, (_, i) => ({
-    num: i + 1,
-    name: '',    /* заполняется из имени файла N(название).ext */
-    file: null,  /* обнаруженное имя файла, иначе перебираем EXTS */
-}));
-const EXTS  = ['mp3','ogg','wav','m4a','aac'];
-const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX'];
-const CIRC  = 283; /* 2π×45 ≈ 283 — длина окружности SVG */
-
-/* ══ СОСТОЯНИЕ ══ */
-let currentAudio  = null;
-let currentBtn    = null;
-let currentRing   = null;
-let progressRaf   = null;
-let vizRaf        = null;
-let audioCtx      = null;
-let analyser      = null;
-let hasRealViz    = false;
-let trackDuration = 0;
-
-/* ══ ПОЛОСЫ ВИЗУАЛИЗАТОРА ══ */
-const vizEl  = document.getElementById('visualizer');
-const vizBars = [];
-for (let i = 0; i < 20; i++) {
-    const b = document.createElement('div');
-    b.className = 'viz-bar';
-    vizEl.appendChild(b);
-    vizBars.push(b);
-}
-
-/* ── Попытка подключить Web Audio ДО play() ─────────────────
-   Если браузер блокирует (file://, CORS) — просто не подключаем,
-   аудио продолжит играть через нативный маршрут.            */
-function tryConnectWebAudio(audio) {
-    try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 64;
-            analyser.smoothingTimeConstant = 0.78;
-        }
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const src = audioCtx.createMediaElementSource(audio);
-        src.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        return true;
-    } catch (e) {
-        return false; /* audio играет нативно — ничего не сломано */
-    }
-}
-
-/* ── Запуск визуализатора (real или fake) ─── */
-function startVisualizer(audio) {
-    vizEl.classList.add('active');
-    hasRealViz = tryConnectWebAudio(audio);
-
-    const data = hasRealViz ? new Uint8Array(analyser.frequencyBinCount) : null;
-    /* fake: каждая полоса бежит к случайной цели */
-    const targets  = vizBars.map(() => Math.random() * 0.65 + 0.2);
-    const currents = vizBars.map(() => 0);
-
-    function loop() {
-        if (hasRealViz && analyser) {
-            analyser.getByteFrequencyData(data);
-            vizBars.forEach((bar, i) => {
-                const v = Math.max(0.04, data[i] / 255);
-                bar.style.clipPath = `inset(${((1 - v) * 100).toFixed(1)}% 0 0 0)`;
-            });
-        } else {
-            vizBars.forEach((bar, i) => {
-                if (Math.random() < 0.07) targets[i] = Math.random() * 0.7 + 0.15;
-                currents[i] += (targets[i] - currents[i]) * 0.25;
-                bar.style.clipPath = `inset(${((1 - currents[i]) * 100).toFixed(1)}% 0 0 0)`;
-            });
-        }
-        vizRaf = requestAnimationFrame(loop);
-    }
-    loop();
-}
-
-function stopVisualizer() {
-    if (vizRaf) { cancelAnimationFrame(vizRaf); vizRaf = null; }
-    vizEl.classList.remove('active');
-    vizBars.forEach(b => b.style.clipPath = 'inset(100% 0 0 0)');
-}
-
-/* ══ КНОПКИ + SVG КОЛЬЦО ══ */
-const grid = document.getElementById('grid');
-
-SONGS.forEach((song, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'song-btn';
-
-    /* SVG кольцо прогресса */
-    const ns  = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.classList.add('progress-ring');
-
-    const bg = document.createElementNS(ns, 'circle');
-    bg.setAttribute('cx','50'); bg.setAttribute('cy','50');
-    bg.setAttribute('r','45');  bg.classList.add('ring-bg');
-
-    const fill = document.createElementNS(ns, 'circle');
-    fill.setAttribute('cx','50'); fill.setAttribute('cy','50');
-    fill.setAttribute('r','45');  fill.classList.add('ring-fill');
-    fill.style.strokeDashoffset = CIRC; /* пусто */
-
-    svg.appendChild(bg);
-    svg.appendChild(fill);
-    btn.appendChild(svg);
-    btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span>`);
-
-    btn.addEventListener('click', e => {
-        handleClick(song, btn, fill);
-        initGyro();
-    });
-    btn.addEventListener('touchstart', () => {}, { passive: true });
-    grid.appendChild(btn);
-});
-
-document.getElementById('stopBtn').addEventListener('click', stopAll);
-
-/* ══ RIPPLE ══ */
-function addRipple(btn, e) {
-    const r   = btn.getBoundingClientRect();
-    const x   = (e.clientX ?? r.left + r.width  / 2) - r.left;
-    const y   = (e.clientY ?? r.top  + r.height / 2) - r.top;
-    const el  = document.createElement('div');
-    el.className = 'ripple-el';
-    const s = r.width;
-    el.style.cssText = `width:${s}px;height:${s}px;left:${x-s/2}px;top:${y-s/2}px`;
-    btn.appendChild(el);
-    el.addEventListener('animationend', () => el.remove(), { once: true });
-}
-
-/* ══ ВОСПРОИЗВЕДЕНИЕ ══ */
-function handleClick(song, btn, ring) {
-    if (currentBtn === btn) { stopAll(); return; }
-    stopAll();
-    btn.classList.add('loading');
-    const candidates = song.file
-        ? [`sound/${encodeURIComponent(song.file)}`]
-        : EXTS.map(e => `sound/${song.num}.${e}`);
-    tryPlay(song, btn, ring, candidates, 0);
-}
-
-function tryPlay(song, btn, ring, candidates, idx) {
-    if (idx >= candidates.length) {
-        btn.classList.remove('loading');
-        setDisplay('Файл не найден', false);
-        return;
-    }
-
-    const audio = new Audio(candidates[idx]);
-
-    audio.addEventListener('loadedmetadata', () => {
-        trackDuration = audio.duration;
-    }, { once: true });
-
-    audio.play()
-        .then(() => {
-            btn.classList.remove('loading');
-            currentAudio = audio;
-            currentBtn   = btn;
-            currentRing  = ring;
-            btn.classList.add('playing');
-            setDisplay(song.name || `Песня ${ROMAN[song.num - 1]}`, true);
-            startVisualizer(audio);
-            startProgress();
-            audio.addEventListener('ended', stopAll, { once: true });
-        })
-        .catch(() => tryPlay(song, btn, ring, candidates, idx + 1));
-}
-
-function stopAll() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        currentAudio = null;
-    }
-    if (currentBtn)  { currentBtn.classList.remove('playing', 'loading'); currentBtn = null; }
-    if (currentRing) { currentRing.style.strokeDashoffset = CIRC; currentRing = null; }
-    stopVisualizer();
-    stopProgress();
-    setDisplay('— Выберите песню —', false);
-}
-
-/* ══ ПРОГРЕСС (requestAnimationFrame) ══ */
-function startProgress() {
-    if (progressRaf) cancelAnimationFrame(progressRaf);
-    const fill   = document.getElementById('progressFill');
-    const timeEl = document.getElementById('dispTime');
-
-    function tick() {
-        if (!currentAudio) return;
-        const dur = currentAudio.duration || trackDuration;
-        const cur = currentAudio.currentTime;
-        const pct = dur ? cur / dur : 0;
-
-        fill.style.width = (pct * 100) + '%';
-        fill.classList.toggle('has-dot', pct > 0);
-        if (currentRing) currentRing.style.strokeDashoffset = CIRC * (1 - pct);
-        timeEl.textContent = dur ? fmt(cur) + ' / ' + fmt(dur) : fmt(cur);
-
-        progressRaf = requestAnimationFrame(tick);
-    }
-    tick();
-}
-
-function stopProgress() {
-    if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; }
-    trackDuration = 0;
-    const fill = document.getElementById('progressFill');
-    fill.style.width = '0%';
-    fill.classList.remove('has-dot');
-    document.getElementById('dispTime').textContent = '--:--';
-}
-
-/* Перемотка: тап по дисплею */
-document.getElementById('progressBar').addEventListener('click', e => {
-    if (!currentAudio?.duration) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    currentAudio.currentTime =
-        Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * currentAudio.duration;
-    e.stopPropagation();
-});
-
-/* ══ ДИСПЛЕЙ ══ */
-function setDisplay(text, playing) {
-    const name = document.getElementById('dispSong');
-    name.textContent = text;
-    name.classList.toggle('active', playing);
-    document.getElementById('dispTime').classList.toggle('active', playing);
-    if (!playing) document.getElementById('dispTime').textContent = '--:--';
-    if (typeof ornamentsPlaying === 'function') ornamentsPlaying(playing);
-}
-
-/* ══ ОБНАРУЖЕНИЕ ПЕСЕН ══
-   Читает sound/songs.json (генерируется скриптом make-songs.py).
-   Fallback: парсинг directory listing для локального Python-сервера. */
-(async function discoverSongs() {
-    /* 1. songs.json — работает везде включая GitHub Pages */
-    try {
-        const res = await fetch('sound/songs.json');
-        if (res.ok) {
-            const data = await res.json();
-            data.forEach(({num, name, file}) => {
-                const song = SONGS.find(s => s.num === num);
-                if (song) { song.name = name || ''; song.file = file || ''; }
-            });
-            return;
-        }
-    } catch(e) {}
-
-    /* 2. directory listing — только локальный Python-сервер */
-    try {
-        const res = await fetch('sound/');
-        if (!res.ok) return;
-        if (!(res.headers.get('content-type') || '').includes('text/html')) return;
-        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        [...doc.querySelectorAll('a[href]')].forEach(a => {
-            const href = decodeURIComponent(a.getAttribute('href') || '').replace(/^.*\//, '');
-            const m = href.match(/^(\d+)(?:\((.+)\))?\.(\w+)$/i);
-            if (!m) return;
-            const num = +m[1], name = m[2] || '', ext = m[3].toLowerCase();
-            const song = SONGS.find(s => s.num === num);
-            if (!song || !EXTS.includes(ext)) return;
-            song.name = name; song.file = href;
-        });
-    } catch(e) {}
-})();
-
-/* ══ СНЕГ ══ */
-const snowCanvas = document.createElement('canvas');
-snowCanvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100;';
-document.body.appendChild(snowCanvas);
-const snowCtx = snowCanvas.getContext('2d');
-function resizeSnow() { snowCanvas.width = innerWidth; snowCanvas.height = innerHeight; }
-resizeSnow();
-window.addEventListener('resize', resizeSnow);
-
-const flakes = Array.from({length: 72}, () => ({
-    x:     Math.random() * innerWidth,
-    y:     Math.random() * innerHeight,
-    r:     Math.random() * 2.5 + 0.8,
-    speed: Math.random() * 0.8 + 0.25,
-    drift: Math.random() * 0.4 - 0.2,
-    wobble: Math.random() * Math.PI * 2,
-    wobbleSpd: Math.random() * 0.025 + 0.005,
-    opacity: Math.random() * 0.55 + 0.2,
-}));
-
-let snowOn  = false;
-let snowRaf = null;
-
-function snowLoop() {
-    snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
-    flakes.forEach(f => {
-        f.wobble += f.wobbleSpd;
-        f.x += f.drift + Math.sin(f.wobble) * 0.4;
-        f.y += f.speed;
-        if (f.y > innerHeight + 8) { f.y = -8; f.x = Math.random() * innerWidth; }
-        if (f.x >  innerWidth + 8) f.x = -8;
-        if (f.x < -8)              f.x = innerWidth + 8;
-        snowCtx.save();
-        snowCtx.globalAlpha = f.opacity;
-        snowCtx.fillStyle   = '#fff';
-        snowCtx.shadowBlur  = 5;
-        snowCtx.shadowColor = 'rgba(255,255,255,.6)';
-        snowCtx.beginPath();
-        snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        snowCtx.fill();
-        snowCtx.restore();
-    });
-    snowRaf = requestAnimationFrame(snowLoop);
-}
-
-const snowBtn = document.getElementById('snowBtn');
-snowBtn.addEventListener('click', () => {
-    snowOn = !snowOn;
-    snowBtn.classList.toggle('active', snowOn);
-    if (snowOn) { snowLoop(); }
-    else { cancelAnimationFrame(snowRaf); snowRaf = null; snowCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); }
-});
-
-/* ══ ЛИСТЬЯ ══ */
-const leafCanvas = document.createElement('canvas');
-leafCanvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:101;';
-document.body.appendChild(leafCanvas);
-const leafCtx = leafCanvas.getContext('2d');
-function resizeLeaf() { leafCanvas.width = innerWidth; leafCanvas.height = innerHeight; }
-resizeLeaf();
-window.addEventListener('resize', resizeLeaf);
-
-const LEAF_COLS = ['#F71015','#FF6600','#FFAA00','#CC3300','#FF8C00','#E85000'];
-const leafArr = Array.from({length: 38}, () => ({
-    x:         Math.random() * innerWidth,
-    y:         Math.random() * innerHeight,
-    rx:        Math.random() * 7 + 5,
-    ry:        Math.random() * 4 + 2.5,
-    speed:     Math.random() * 1.1 + 0.5,
-    drift:     Math.random() * 1.0 - 0.5,
-    wobble:    Math.random() * Math.PI * 2,
-    wobbleSpd: Math.random() * 0.028 + 0.008,
-    rot:       Math.random() * Math.PI * 2,
-    rotSpd:    (Math.random() - 0.5) * 0.05,
-    opacity:   Math.random() * 0.45 + 0.35,
-    col:       LEAF_COLS[Math.floor(Math.random() * LEAF_COLS.length)],
-}));
-
-let leavesOn  = false;
-let leavesRaf = null;
-
-function leafLoop() {
-    leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
-    leafArr.forEach(l => {
-        l.wobble += l.wobbleSpd;
-        l.rot    += l.rotSpd;
-        l.x      += l.drift + Math.sin(l.wobble) * 0.9;
-        l.y      += l.speed;
-        if (l.y > innerHeight + 14) { l.y = -14; l.x = Math.random() * innerWidth; }
-        if (l.x >  innerWidth + 14) l.x = -14;
-        if (l.x < -14)              l.x = innerWidth + 14;
-        leafCtx.save();
-        leafCtx.translate(l.x, l.y);
-        leafCtx.rotate(l.rot);
-        leafCtx.globalAlpha = l.opacity;
-        leafCtx.fillStyle   = l.col;
-        leafCtx.shadowBlur  = 5;
-        leafCtx.shadowColor = l.col;
-        leafCtx.beginPath();
-        leafCtx.ellipse(0, 0, l.rx, l.ry, 0, 0, Math.PI * 2);
-        leafCtx.fill();
-        leafCtx.restore();
-    });
-    leavesRaf = requestAnimationFrame(leafLoop);
-}
-
-const leavesBtn = document.getElementById('leavesBtn');
-leavesBtn.addEventListener('click', () => {
-    leavesOn = !leavesOn;
-    leavesBtn.classList.toggle('active', leavesOn);
-    if (leavesOn) { leafLoop(); }
-    else { cancelAnimationFrame(leavesRaf); leavesRaf = null; leafCtx.clearRect(0,0,leafCanvas.width,leafCanvas.height); }
-});
-
-/* ══ ПАРАЛЛАКС (ГИРОСКОП / МЫШЬ) ══ */
-const _woman = document.querySelector('.woman-corner');
-const _title  = document.querySelector('.title');
-const _bwrap  = document.querySelector('.buttons-wrapper');
-
-let ptx = 0, pty = 0, pcx = 0, pcy = 0;
-let gyroActive = false, gyroAsked = false;
-
-async function initGyro() {
-    if (gyroAsked) return;
-    gyroAsked = true;
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-            if (await DeviceOrientationEvent.requestPermission() === 'granted') startGyro();
-        } catch(e) {}
-    } else {
-        startGyro();
-    }
-}
-
-function startGyro() {
-    gyroActive = true;
-    window.addEventListener('deviceorientation', e => {
-        ptx = Math.max(-1, Math.min(1, (e.gamma || 0) / 22));
-        pty = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 22));
-    });
-}
-
-/* мышь для десктопа */
-document.addEventListener('mousemove', e => {
-    if (gyroActive) return;
-    ptx = (e.clientX / innerWidth  - 0.5) * 2;
-    pty = (e.clientY / innerHeight - 0.5) * 2;
-});
-
-/* плавный параллакс через RAF */
-(function parallaxLoop() {
-    pcx += (ptx - pcx) * 0.07;
-    pcy += (pty - pcy) * 0.07;
-    if (_woman) _woman.style.transform = `translateY(${pcy * 18}px)`; /* горизонталь не двигаем — всегда у края */
-    if (_title)  _title.style.transform  = `translate(${-pcx * 10}px, ${-pcy * 6}px)`;
-    if (_bwrap)  _bwrap.style.transform  = `translate(${pcx * 5}px, ${pcy * 3}px)`;
-    requestAnimationFrame(parallaxLoop);
-})();
-
-/* ══ WAKE LOCK ══ */
-let wakeLock = null, wakeLockOn = false;
-const wakeLockBtn = document.getElementById('wakeLockBtn');
-
-async function toggleWakeLock() {
-    if (!('wakeLock' in navigator)) { wakeLockBtn.title = 'Не поддерживается'; return; }
-    if (wakeLockOn) {
-        await wakeLock?.release();
-        wakeLock = null; wakeLockOn = false;
-    } else {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            wakeLockOn = true;
-            wakeLock.addEventListener('release', () => {
-                wakeLockOn = false;
-                wakeLockBtn.classList.remove('active');
-            });
-        } catch(e) {}
-    }
-    wakeLockBtn.classList.toggle('active', wakeLockOn);
-}
-wakeLockBtn.addEventListener('click', toggleWakeLock);
-
-/* ══ TOGGLE УЗОРОВ ══ */
-let ornamentsOn = false;
-let ornamentsDrawn = false;
-const ornamentsBtn = document.getElementById('ornamentsBtn');
-ornamentsBtn.addEventListener('click', () => {
-    ornamentsOn = !ornamentsOn;
-    ornamentsBtn.classList.toggle('active', ornamentsOn);
-    if (ornamentsOn) {
-        document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0.65');
-        if (!ornamentsDrawn) {
-            ornamentsDrawn = true;
-            animPaths.forEach((p, i) => {
-                p.style.transition = `stroke-dashoffset ${1.6 + i * 0.06}s ease`;
-                p.style.strokeDashoffset = '0';
-            });
-        }
-    } else {
-        document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0');
-    }
-});
-
-/* восстановить wake lock при возврате на вкладку */
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLockOn && document.visibilityState === 'visible') {
-        try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
-    }
-});
-
-/* ══ ХОХЛОМСКИЕ УЗОРЫ ══ */
-(function() {
-    const NS   = 'http://www.w3.org/2000/svg';
-    const SIZE = 130;
-
-    /* пути (начало из угла top-left, viewBox 0 0 130 130) */
-    const VINE  = 'M 6,6 C 8,42 42,48 56,28 C 70,8 90,34 80,58 C 70,82 44,88 50,118';
-    const BR1   = 'M 56,28 C 74,12 102,18 116,6';
-    const BR2   = 'M 80,58 C 100,44 120,50 126,38';
-    const LEAF1 = 'M 56,28 C 48,18 46,10 56,8 C 66,6 68,18 62,26 Z';
-    const LEAF2 = 'M 80,58 C 72,48 72,40 80,38 C 88,36 90,48 84,56 Z';
-    const BERRIES = [
-        {cx:116,cy:6,r:6},{cx:122,cy:12,r:3.5},{cx:110,cy:12,r:3.5},
-        {cx:126,cy:38,r:5.5},{cx:122,cy:44,r:3.5},
-        {cx:50,cy:118,r:7},{cx:43,cy:113,r:4},{cx:57,cy:113,r:4},
-    ];
-
-    /* 4 угла: позиция + CSS-трансформ для зеркалирования */
-    const CORNERS = [
-        ['left:0;top:0',        ''],
-        ['right:0;top:0',       'scaleX(-1)'],
-        ['left:0;bottom:0',     'scaleY(-1)'],
-        ['right:0;bottom:0',    'scale(-1,-1)'],
-    ];
-
-    window.animPaths = [];
-
-    CORNERS.forEach(([pos, tfm]) => {
-        const svg = document.createElementNS(NS, 'svg');
-        svg.classList.add('khokhloma-ornament');
-        svg.setAttribute('viewBox', `0 0 ${SIZE} ${SIZE}`);
-        svg.setAttribute('width',  SIZE);
-        svg.setAttribute('height', SIZE);
-        svg.style.cssText = `position:fixed;pointer-events:none;z-index:98;opacity:0.65;transition:opacity .8s;`;
-        pos.split(';').forEach(s => {
-            const [k,v] = s.split(':');
-            if (k && v) svg.style[k.trim()] = v.trim();
-        });
-        if (tfm) svg.style.transform = tfm;
-
-        function path(d, stroke, w) {
-            const p = document.createElementNS(NS, 'path');
-            p.setAttribute('d', d); p.setAttribute('fill', 'none');
-            p.setAttribute('stroke', stroke); p.setAttribute('stroke-width', w);
-            p.setAttribute('stroke-linecap', 'round');
-            return p;
-        }
-        function filled(d, fill) {
-            const p = document.createElementNS(NS, 'path');
-            p.setAttribute('d', d); p.setAttribute('fill', fill);
-            return p;
-        }
-
-        const vine  = path(VINE, '#C8A200', 2.5);
-        const br1   = path(BR1,  '#C8A200', 2);
-        const br2   = path(BR2,  '#B09000', 2);
-        svg.append(vine, br1, br2, filled(LEAF1,'#8B7000'), filled(LEAF2,'#8B7000'));
-
-        BERRIES.forEach(({cx,cy,r}) => {
-            const c = document.createElementNS(NS, 'circle');
-            c.setAttribute('cx',cx); c.setAttribute('cy',cy);
-            c.setAttribute('r',r);   c.setAttribute('fill','#F71015');
-            svg.appendChild(c);
-            const h = document.createElementNS(NS, 'circle');
-            h.setAttribute('cx', cx - r*.3); h.setAttribute('cy', cy - r*.3);
-            h.setAttribute('r', r*.35); h.setAttribute('fill','rgba(255,220,100,.55)');
-            svg.appendChild(h);
-        });
-
-        document.body.appendChild(svg);
-
-        [vine, br1, br2].forEach(p => {
-            const len = p.getTotalLength();
-            p.style.strokeDasharray  = len;
-            p.style.strokeDashoffset = len;
-            window.animPaths.push(p);
-        });
-    });
-
-    /* узоры скрыты по умолчанию */
-    document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0');
-
-    /* подсветка при музыке — вызывается из setDisplay */
-    window.ornamentsPlaying = playing => {
-        if (!ornamentsOn) return;
-        document.querySelectorAll('.khokhloma-ornament').forEach(s => {
-            s.style.opacity = playing ? '0.92' : '0.65';
-        });
-    };
-})();
-
-/* ══ FULLSCREEN (клавиша F / двойной тап по заголовку) ══ */
-function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen?.();
-    } else {
-        document.exitFullscreen?.();
-    }
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'f' || e.key === 'F') toggleFullscreen();
-});
-
-/* двойной тап (планшет) и двойной клик (десктоп) по заголовку */
-let lastTap = 0;
-const titleEl = document.querySelector('.title');
-titleEl.addEventListener('touchend', e => {
-    const now = Date.now();
-    if (now - lastTap < 300) { e.preventDefault(); toggleFullscreen(); }
-    lastTap = now;
-});
-titleEl.addEventListener('dblclick', toggleFullscreen);
-
-/* ══ УТИЛИТА ══ */
-function fmt(s) {
-    if (!isFinite(s)) return '--:--';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-}
-</script>
+    <div class="film-vignette" id="filmVignette"></div>
+
+    <!-- Диалог настроек -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-top-line"></div>
+            <div class="settings-header">
+                <span class="settings-title">Настройки</span>
+                <button class="settings-close" id="settingsClose">✕</button>
+            </div>
+            <div class="settings-effects">
+                <div class="setting-col">
+                    <button class="setting-item" id="snowBtn">❄</button>
+                    <span class="setting-label">Снег</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="leavesBtn">🍂</button>
+                    <span class="setting-label">Листья</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="fireBtn">🔥</button>
+                    <span class="setting-label">Огонь</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="ornamentsBtn">✾</button>
+                    <span class="setting-label">Узоры</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="wakeLockBtn">☀</button>
+                    <span class="setting-label">Экран</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="filmBtn">🎞</button>
+                    <span class="setting-label">Плёнка</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="lightBtn">💡</button>
+                    <span class="setting-label">Свет</span>
+                </div>
+                <div class="setting-col">
+                    <button class="setting-item" id="shakeBtn">⚡</button>
+                    <span class="setting-label">Тряска</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
+
 </html>
