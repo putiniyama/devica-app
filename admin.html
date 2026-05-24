@@ -502,7 +502,8 @@ async function confirmUpload() {
     if (existing && !confirm(`Слот ${ROMAN[selectedSlot-1]} занят («${existing.name}»). Заменить?`)) return;
 
     document.getElementById('modalSave').disabled = true;
-    const ext = pendingFile.name.split('.').pop().toLowerCase();
+    const file = pendingFile;  /* сохраняем до closeModal, который обнуляет pendingFile */
+    const ext = file.name.split('.').pop().toLowerCase();
     const filename = `${selectedSlot}(${name}).${ext}`;
 
     const wrap = document.getElementById('uploadBarWrap');
@@ -512,7 +513,7 @@ async function confirmUpload() {
 
     try {
         if (existing) await api('DELETE', `/api/songs/${encodeURIComponent(existing.file)}`);
-        const buf = await readFile(pendingFile, pct => { bar.style.width = pct + '%'; });
+        const buf = await readFile(file, pct => { bar.style.width = pct + '%'; });
         await api('PUT', `/api/songs/${encodeURIComponent(filename)}`, buf);
         toast(`Добавлено: ${name}`);
         await loadSongs();
