@@ -169,26 +169,25 @@
             flex-shrink: 0;
             height: clamp(28px, 5.5vh, 65px);
             display: flex;
-            align-items: flex-end;
+            align-items: stretch;
             justify-content: center;
-            gap: 3px;
+            gap: 8px;
             padding: 0 1vmin;
             position: relative; z-index: 2;
-            overflow: hidden; /* берёзы поднимаются снизу — обрезаем лишнее */
+            background: #000;
         }
         .viz-bar {
             flex: 1;
-            max-width: clamp(11px, 2.9vmin, 27px);
-            height: 100%;          /* всегда полная высота контейнера */
+            max-width: clamp(6px, 1.35vmin, 14px);
             background-image: url('images/береза.png');
             background-size: cover;
-            background-position: bottom center;
+            background-position: center center;
             background-repeat: no-repeat;
             mix-blend-mode: screen;
             border-radius: 2px 2px 0 0;
-            transform: translateY(100%); /* прячем ниже границы */
-            opacity: .2;
-            transition: transform .09s ease-out, opacity .5s;
+            clip-path: inset(100% 0 0 0); /* шторка снизу — без сжатия */
+            opacity: 0;
+            will-change: clip-path;
         }
         .visualizer.active .viz-bar { opacity: 1; }
 
@@ -467,7 +466,7 @@ function startVisualizer(audio) {
 
     const data = hasRealViz ? new Uint8Array(analyser.frequencyBinCount) : null;
     /* fake: каждая полоса бежит к случайной цели */
-    const targets  = vizBars.map(() => Math.random() * 0.6 + 0.1);
+    const targets  = vizBars.map(() => Math.random() * 0.65 + 0.2);
     const currents = vizBars.map(() => 0);
 
     function loop() {
@@ -475,13 +474,13 @@ function startVisualizer(audio) {
             analyser.getByteFrequencyData(data);
             vizBars.forEach((bar, i) => {
                 const v = Math.max(0.04, data[i] / 255);
-                bar.style.transform = `translateY(${(1 - v) * 100}%)`;
+                bar.style.clipPath = `inset(${((1 - v) * 100).toFixed(1)}% 0 0 0)`;
             });
         } else {
             vizBars.forEach((bar, i) => {
-                if (Math.random() < 0.08) targets[i] = Math.random() * 0.7 + 0.15;
-                currents[i] += (targets[i] - currents[i]) * 0.14;
-                bar.style.transform = `translateY(${(1 - currents[i]) * 100}%)`;
+                if (Math.random() < 0.07) targets[i] = Math.random() * 0.7 + 0.15;
+                currents[i] += (targets[i] - currents[i]) * 0.25;
+                bar.style.clipPath = `inset(${((1 - currents[i]) * 100).toFixed(1)}% 0 0 0)`;
             });
         }
         vizRaf = requestAnimationFrame(loop);
@@ -492,7 +491,7 @@ function startVisualizer(audio) {
 function stopVisualizer() {
     if (vizRaf) { cancelAnimationFrame(vizRaf); vizRaf = null; }
     vizEl.classList.remove('active');
-    vizBars.forEach(b => b.style.transform = 'translateY(100%)');
+    vizBars.forEach(b => b.style.clipPath = 'inset(100% 0 0 0)');
 }
 
 /* ══ КНОПКИ + SVG КОЛЬЦО ══ */
