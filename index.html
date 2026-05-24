@@ -290,16 +290,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Ripple */
-        .ripple-el {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255,255,255,.35);
-            transform: scale(0);
-            pointer-events: none;
-            animation: ripple-anim .55s ease-out forwards;
-        }
-        @keyframes ripple-anim { to { transform: scale(3); opacity: 0; } }
 
         /* ══ СТОП ══ */
         .stop-btn {
@@ -522,8 +512,8 @@ SONGS.forEach((song, i) => {
     btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span>`);
 
     btn.addEventListener('click', e => {
-        addRipple(btn, e);
         handleClick(song, btn, fill);
+        initGyro();
     });
     btn.addEventListener('touchstart', () => {}, { passive: true });
     grid.appendChild(btn);
@@ -642,6 +632,75 @@ function setDisplay(text, playing) {
     document.getElementById('dispTime').classList.toggle('active', playing);
     if (!playing) document.getElementById('dispTime').textContent = '--:--';
 }
+
+/* ══ ПАРАЛЛАКС (ГИРОСКОП / МЫШЬ) ══ */
+const _woman = document.querySelector('.woman-corner');
+const _title  = document.querySelector('.title');
+const _bwrap  = document.querySelector('.buttons-wrapper');
+
+let ptx = 0, pty = 0, pcx = 0, pcy = 0;
+let gyroActive = false, gyroAsked = false;
+
+async function initGyro() {
+    if (gyroAsked) return;
+    gyroAsked = true;
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+            if (await DeviceOrientationEvent.requestPermission() === 'granted') startGyro();
+        } catch(e) {}
+    } else {
+        startGyro();
+    }
+}
+
+function startGyro() {
+    gyroActive = true;
+    window.addEventListener('deviceorientation', e => {
+        ptx = Math.max(-1, Math.min(1, (e.gamma || 0) / 22));
+        pty = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 22));
+    });
+}
+
+/* мышь для десктопа */
+document.addEventListener('mousemove', e => {
+    if (gyroActive) return;
+    ptx = (e.clientX / innerWidth  - 0.5) * 2;
+    pty = (e.clientY / innerHeight - 0.5) * 2;
+});
+
+/* плавный параллакс через RAF */
+(function parallaxLoop() {
+    pcx += (ptx - pcx) * 0.07;
+    pcy += (pty - pcy) * 0.07;
+    if (_woman) _woman.style.transform = `translate(${pcx * 30}px, ${pcy * 18}px)`;
+    if (_title)  _title.style.transform  = `translate(${-pcx * 10}px, ${-pcy * 6}px)`;
+    if (_bwrap)  _bwrap.style.transform  = `translate(${pcx * 5}px, ${pcy * 3}px)`;
+    requestAnimationFrame(parallaxLoop);
+})();
+
+/* ══ FULLSCREEN (клавиша F / двойной тап по заголовку) ══ */
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.();
+    } else {
+        document.exitFullscreen?.();
+    }
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+});
+
+/* двойной тап (планшет) и двойной клик (десктоп) по заголовку */
+let lastTap = 0;
+const titleEl = document.querySelector('.title');
+titleEl.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTap < 300) { e.preventDefault(); toggleFullscreen(); }
+    lastTap = now;
+});
+titleEl.addEventListener('dblclick', toggleFullscreen);
 
 /* ══ УТИЛИТА ══ */
 function fmt(s) {
