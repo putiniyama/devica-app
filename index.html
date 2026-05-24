@@ -558,7 +558,7 @@ function handleClick(song, btn, ring) {
     stopAll();
     btn.classList.add('loading');
     const candidates = song.file
-        ? [`sound/${song.file}`]
+        ? [`sound/${encodeURIComponent(song.file)}`]
         : EXTS.map(e => `sound/${song.num}.${e}`);
     tryPlay(song, btn, ring, candidates, 0);
 }
@@ -654,15 +654,28 @@ function setDisplay(text, playing) {
     if (typeof ornamentsPlaying === 'function') ornamentsPlaying(playing);
 }
 
-/* ══ ОБНАРУЖЕНИЕ ИМЁН ПЕСЕН ══
-   Сканирует sound/ через directory listing.
-   Формат файла: N(Название).ext → song.name = "Название", song.file = полное имя.  */
+/* ══ ОБНАРУЖЕНИЕ ПЕСЕН ══
+   Читает sound/songs.json (генерируется скриптом make-songs.py).
+   Fallback: парсинг directory listing для локального Python-сервера. */
 (async function discoverSongs() {
+    /* 1. songs.json — работает везде включая GitHub Pages */
+    try {
+        const res = await fetch('sound/songs.json');
+        if (res.ok) {
+            const data = await res.json();
+            data.forEach(({num, name, file}) => {
+                const song = SONGS.find(s => s.num === num);
+                if (song) { song.name = name || ''; song.file = file || ''; }
+            });
+            return;
+        }
+    } catch(e) {}
+
+    /* 2. directory listing — только локальный Python-сервер */
     try {
         const res = await fetch('sound/');
         if (!res.ok) return;
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('text/html')) return;
+        if (!(res.headers.get('content-type') || '').includes('text/html')) return;
         const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         [...doc.querySelectorAll('a[href]')].forEach(a => {
             const href = decodeURIComponent(a.getAttribute('href') || '').replace(/^.*\//, '');
@@ -671,8 +684,7 @@ function setDisplay(text, playing) {
             const num = +m[1], name = m[2] || '', ext = m[3].toLowerCase();
             const song = SONGS.find(s => s.num === num);
             if (!song || !EXTS.includes(ext)) return;
-            song.name = name;
-            song.file = href;
+            song.name = name; song.file = href;
         });
     } catch(e) {}
 })();
