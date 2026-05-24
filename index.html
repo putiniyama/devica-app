@@ -255,12 +255,25 @@
 
         .btn-num {
             font-family: 'Ruslan', Georgia, serif;
-            font-size: clamp(14px, 6vmin, 58px);
+            font-size: clamp(12px, 5vmin, 50px);
             color: var(--white); line-height: 1;
             text-shadow: 0 1px 6px rgba(0,0,0,.9);
             transition: color .15s, text-shadow .15s;
             position: relative; z-index: 1;
         }
+        .btn-label {
+            font-family: Georgia, serif;
+            font-size: clamp(5px, 1.1vmin, 10px);
+            color: rgba(255,255,255,.42);
+            letter-spacing: .04em;
+            max-width: 78%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            line-height: 1;
+            margin-top: .2vmin;
+            transition: color .15s;
+            position: relative; z-index: 1;
+        }
+        .song-btn.playing .btn-label { color: rgba(255,255,255,.82); }
 
         /* Нажатие */
         .song-btn:active { transform: scale(.91); }
@@ -416,17 +429,11 @@
 
 <script>
 /* ══ НАСТРОЙКА ══ */
-const SONGS = [
-    { num: 1, name: 'Песня первая'    },
-    { num: 2, name: 'Песня вторая'    },
-    { num: 3, name: 'Песня третья'    },
-    { num: 4, name: 'Песня четвёртая' },
-    { num: 5, name: 'Песня пятая'     },
-    { num: 6, name: 'Песня шестая'    },
-    { num: 7, name: 'Песня седьмая'   },
-    { num: 8, name: 'Песня восьмая'   },
-    { num: 9, name: 'Песня девятая'   },
-];
+const SONGS = Array.from({length: 9}, (_, i) => ({
+    num: i + 1,
+    name: '',    /* заполняется из имени файла N(название).ext */
+    file: null,  /* обнаруженное имя файла, иначе перебираем EXTS */
+}));
 const EXTS  = ['mp3','ogg','wav','m4a','aac'];
 const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX'];
 const CIRC  = 283; /* 2π×45 ≈ 283 — длина окружности SVG */
@@ -533,7 +540,7 @@ SONGS.forEach((song, i) => {
     svg.appendChild(bg);
     svg.appendChild(fill);
     btn.appendChild(svg);
-    btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span>`);
+    btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span><span class="btn-label"></span>`);
 
     btn.addEventListener('click', e => {
         handleClick(song, btn, fill);
@@ -563,23 +570,25 @@ function handleClick(song, btn, ring) {
     if (currentBtn === btn) { stopAll(); return; }
     stopAll();
     btn.classList.add('loading');
-    tryPlay(song, btn, ring, 0);
+    const candidates = song.file
+        ? [`sound/${song.file}`]
+        : EXTS.map(e => `sound/${song.num}.${e}`);
+    tryPlay(song, btn, ring, candidates, 0);
 }
 
-function tryPlay(song, btn, ring, idx) {
-    if (idx >= EXTS.length) {
+function tryPlay(song, btn, ring, candidates, idx) {
+    if (idx >= candidates.length) {
         btn.classList.remove('loading');
-        setDisplay(`Файл не найден: sound/${song.num}`, false);
+        setDisplay('Файл не найден', false);
         return;
     }
 
-    const audio = new Audio(`sound/${song.num}.${EXTS[idx]}`);
+    const audio = new Audio(candidates[idx]);
 
     audio.addEventListener('loadedmetadata', () => {
         trackDuration = audio.duration;
     }, { once: true });
 
-    /* play() вызываем ПОСЛЕ tryConnectWebAudio — Web Audio уже готов */
     audio.play()
         .then(() => {
             btn.classList.remove('loading');
@@ -587,12 +596,12 @@ function tryPlay(song, btn, ring, idx) {
             currentBtn   = btn;
             currentRing  = ring;
             btn.classList.add('playing');
-            setDisplay(song.name, true);
-            startVisualizer(audio);   /* подключает Web Audio или запускает fake */
+            setDisplay(song.name || `Песня ${ROMAN[song.num - 1]}`, true);
+            startVisualizer(audio);
             startProgress();
             audio.addEventListener('ended', stopAll, { once: true });
         })
-        .catch(() => tryPlay(song, btn, ring, idx + 1));
+        .catch(() => tryPlay(song, btn, ring, candidates, idx + 1));
 }
 
 function stopAll() {
@@ -657,6 +666,31 @@ function setDisplay(text, playing) {
     if (!playing) document.getElementById('dispTime').textContent = '--:--';
     if (typeof ornamentsPlaying === 'function') ornamentsPlaying(playing);
 }
+
+/* ══ ОБНАРУЖЕНИЕ ИМЁН ПЕСЕН ══
+   Сканирует sound/ через directory listing.
+   Формат файла: N(Название).ext → song.name = "Название", song.file = полное имя.  */
+(async function discoverSongs() {
+    try {
+        const res = await fetch('sound/');
+        if (!res.ok) return;
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('text/html')) return;
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        [...doc.querySelectorAll('a[href]')].forEach(a => {
+            const href = decodeURIComponent(a.getAttribute('href') || '').replace(/^.*\//, '');
+            const m = href.match(/^(\d+)\(([^)]+)\)\.(\w+)$/i);
+            if (!m) return;
+            const num = +m[1], name = m[2], ext = m[3].toLowerCase();
+            const song = SONGS.find(s => s.num === num);
+            if (!song || !EXTS.includes(ext)) return;
+            song.name = name;
+            song.file = href;
+            const lbl = grid.children[num - 1]?.querySelector('.btn-label');
+            if (lbl) lbl.textContent = name;
+        });
+    } catch(e) {}
+})();
 
 /* ══ СНЕГ ══ */
 const snowCanvas = document.createElement('canvas');
