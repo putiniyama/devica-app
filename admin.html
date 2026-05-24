@@ -287,9 +287,10 @@ async function loadSongs() {
         const files = await api('GET', '/api/songs');
         songs.forEach(s => { s.name = ''; s.file = ''; });
         files.forEach(f => {
-            const m = f.match(/^(\d+)\(([^)]+)\)\.(\w+)$/i);
+            /* формат N(Название).ext  ИЛИ  N.ext */
+            const m = f.match(/^(\d+)(?:\(([^)]+)\))?\.(\w+)$/i);
             if (!m) return;
-            const num = +m[1], name = m[2], ext = m[3].toLowerCase();
+            const num = +m[1], name = m[2] || '', ext = m[3].toLowerCase();
             if (num < 1 || num > 9 || !EXTS.includes(ext)) return;
             const s = songs.find(s => s.num === num);
             if (s) { s.name = name; s.file = f; }
