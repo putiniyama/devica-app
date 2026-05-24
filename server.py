@@ -8,6 +8,16 @@
 import os, json, urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
+# загрузить .env если есть
+_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.isfile(_env):
+    with open(_env) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                k, v = line.split('=', 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
 PORT     = int(os.environ.get('PORT', 8787))
 HOST     = os.environ.get('HOST', '0.0.0.0')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
