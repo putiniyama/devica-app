@@ -397,6 +397,7 @@
             <button class="icon-btn" id="snowBtn"   title="Снег">❄</button>
             <button class="icon-btn stop-icon" id="stopBtn" title="Остановить">◼</button>
             <button class="icon-btn" id="leavesBtn"    title="Листья">🍂</button>
+            <button class="icon-btn active" id="ornamentsBtn" title="Узоры">✾</button>
             <button class="icon-btn" id="wakeLockBtn" title="Экран не гаснет">☀</button>
         </div>
 
@@ -841,6 +842,18 @@ async function toggleWakeLock() {
     wakeLockBtn.classList.toggle('active', wakeLockOn);
 }
 wakeLockBtn.addEventListener('click', toggleWakeLock);
+
+/* ══ TOGGLE УЗОРОВ ══ */
+let ornamentsOn = true;
+const ornamentsBtn = document.getElementById('ornamentsBtn');
+ornamentsBtn.addEventListener('click', () => {
+    ornamentsOn = !ornamentsOn;
+    ornamentsBtn.classList.toggle('active', ornamentsOn);
+    document.querySelectorAll('.khokhloma-ornament').forEach(s => {
+        s.style.opacity = ornamentsOn ? '0.65' : '0';
+        s.style.pointerEvents = 'none';
+    });
+});
 
 /* восстановить wake lock при возврате на вкладку */
 document.addEventListener('visibilitychange', async () => {
