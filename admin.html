@@ -273,7 +273,11 @@ async function api(method, path, body) {
         opts.headers['Content-Type'] = 'application/json';
     }
     const r = await fetch(path, opts);
-    if (!r.ok) throw new Error(await r.text());
+    if (!r.ok) {
+        const err = new Error(await r.text().catch(() => r.statusText));
+        err.status = r.status;
+        throw err;
+    }
     return r.json();
 }
 
@@ -293,15 +297,21 @@ async function loadSongs() {
         setStatus(true);
         render();
     } catch(e) {
-        setStatus(false, e.message);
+        setStatus(false, e);
     }
 }
 
-function setStatus(ok, msg) {
+function setStatus(ok, err) {
     document.getElementById('dot').className = 'dot ' + (ok ? 'ok' : 'err');
-    document.getElementById('statusText').textContent = ok
-        ? `Сервер подключён · ${songs.filter(s=>s.file).length} из 9 слотов заняты`
-        : `Нет соединения: ${msg || ''}`;
+    let text;
+    if (ok) {
+        text = `Сервер подключён · ${songs.filter(s=>s.file).length} из 9 слотов заняты`;
+    } else if (err?.status === 404) {
+        text = 'Запустите сервер командой:  python3 server.py';
+    } else {
+        text = 'Нет соединения — запустите:  python3 server.py';
+    }
+    document.getElementById('statusText').textContent = text;
 }
 
 /* ══ РЕНДЕР ══ */
