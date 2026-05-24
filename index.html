@@ -255,25 +255,12 @@
 
         .btn-num {
             font-family: 'Ruslan', Georgia, serif;
-            font-size: clamp(12px, 5vmin, 50px);
+            font-size: clamp(14px, 6vmin, 58px);
             color: var(--white); line-height: 1;
             text-shadow: 0 1px 6px rgba(0,0,0,.9);
             transition: color .15s, text-shadow .15s;
             position: relative; z-index: 1;
         }
-        .btn-label {
-            font-family: Georgia, serif;
-            font-size: clamp(5px, 1.1vmin, 10px);
-            color: rgba(255,255,255,.42);
-            letter-spacing: .04em;
-            max-width: 78%;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            line-height: 1;
-            margin-top: .2vmin;
-            transition: color .15s;
-            position: relative; z-index: 1;
-        }
-        .song-btn.playing .btn-label { color: rgba(255,255,255,.82); }
 
         /* Нажатие */
         .song-btn:active { transform: scale(.91); }
@@ -540,7 +527,7 @@ SONGS.forEach((song, i) => {
     svg.appendChild(bg);
     svg.appendChild(fill);
     btn.appendChild(svg);
-    btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span><span class="btn-label"></span>`);
+    btn.insertAdjacentHTML('beforeend', `<span class="btn-num">${ROMAN[i]}</span>`);
 
     btn.addEventListener('click', e => {
         handleClick(song, btn, fill);
@@ -686,8 +673,6 @@ function setDisplay(text, playing) {
             if (!song || !EXTS.includes(ext)) return;
             song.name = name;
             song.file = href;
-            const lbl = grid.children[num - 1]?.querySelector('.btn-label');
-            if (lbl) lbl.textContent = name;
         });
     } catch(e) {}
 })();
@@ -987,6 +972,7 @@ document.addEventListener('visibilitychange', async () => {
 
     /* подсветка при музыке — вызывается из setDisplay */
     window.ornamentsPlaying = playing => {
+        if (!ornamentsOn) return;
         document.querySelectorAll('.khokhloma-ornament').forEach(s => {
             s.style.opacity = playing ? '0.92' : '0.65';
         });
