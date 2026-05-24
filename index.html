@@ -58,7 +58,7 @@
 
         /* ══ УГЛОВАЯ ИЛЛЮСТРАЦИЯ ══ */
         .woman-corner {
-            position: absolute;
+            position: fixed;
             bottom: 0; right: 0;
             height: 65vh; width: auto;
             pointer-events: none;
@@ -846,7 +846,7 @@ document.addEventListener('mousemove', e => {
 (function parallaxLoop() {
     pcx += (ptx - pcx) * 0.07;
     pcy += (pty - pcy) * 0.07;
-    if (_woman) _woman.style.transform = `translate(${pcx * 30}px, ${pcy * 18}px)`;
+    if (_woman) _woman.style.transform = `translateY(${pcy * 18}px)`; /* горизонталь не двигаем — всегда у края */
     if (_title)  _title.style.transform  = `translate(${-pcx * 10}px, ${-pcy * 6}px)`;
     if (_bwrap)  _bwrap.style.transform  = `translate(${pcx * 5}px, ${pcy * 3}px)`;
     requestAnimationFrame(parallaxLoop);
