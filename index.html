@@ -291,52 +291,69 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
 
-        /* ══ СТОП ══ */
-        .stop-btn {
-            flex-shrink: 0; width: 100%;
-            padding: 1.4vmin;
-            background: transparent;
-            border: 1px solid rgba(247,16,21,.25);
-            border-radius: 1.2vmin;
-            color: rgba(255,255,255,.28);
-            font-family: 'Ruslan', Georgia, serif;
-            font-size: clamp(10px, 2vmin, 19px);
-            letter-spacing: .22em;
-            cursor: pointer; touch-action: manipulation;
+        /* ══ ПАНЕЛЬ УПРАВЛЕНИЯ ══ */
+        .controls {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3.5vmin;
             position: relative; z-index: 2;
-            transition: all .15s ease;
         }
-        .stop-btn:active {
+        .icon-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.18);
+            border-radius: 50%;
+            width:  clamp(34px, 6.5vmin, 52px);
+            height: clamp(34px, 6.5vmin, 52px);
+            font-size: clamp(15px, 2.8vmin, 24px);
+            color: rgba(255,255,255,.22);
+            cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: color .3s, border-color .3s, text-shadow .3s, transform .1s;
+            touch-action: manipulation;
+        }
+        .icon-btn.active {
+            color: rgba(255,255,255,.88);
+            border-color: rgba(255,255,255,.55);
+            text-shadow: 0 0 10px rgba(255,255,255,.75);
+        }
+        .icon-btn.stop-icon {
+            border-color: rgba(247,16,21,.3);
+            color: rgba(247,16,21,.4);
+            font-size: clamp(12px, 2.2vmin, 20px);
+        }
+        .icon-btn.stop-icon:active {
             background: rgba(247,16,21,.15);
             color: var(--red); border-color: var(--red);
-            box-shadow: 0 0 15px rgba(247,16,21,.3);
-            transform: scale(.98);
+            box-shadow: 0 0 14px rgba(247,16,21,.35);
+            transform: scale(.93);
         }
 
         /* ══ ПОДВАЛ ══ */
         .footer {
             flex-shrink: 0;
             display: flex; align-items: center;
-            justify-content: space-between;
-            gap: 2vmin;
+            justify-content: center;
             position: relative; z-index: 2;
         }
-        .footer-left { display: flex; align-items: center; gap: 1.5vmin; }
+        .footer-center { display: flex; align-items: center; gap: 1.5vmin; }
         .footer-ring {
             height: 5.5vmin; width: 5.5vmin;
             object-fit: contain;
             filter: brightness(0) invert(1); opacity: .28;
         }
         .footer-text {
-            font-size: clamp(7px, 1.1vmin, 11px);
-            color: rgba(255,255,255,.18);
-            letter-spacing: .2em; text-transform: uppercase;
+            font-size: clamp(8px, 1.3vmin, 13px);
+            color: rgba(255,255,255,.55);
+            letter-spacing: .15em; text-transform: uppercase;
             font-family: Georgia, serif;
         }
         .qr-wrap {
+            position: absolute; right: 0;
             background: var(--white);
             border-radius: .6vmin;
-            padding: .5vmin; line-height: 0; flex-shrink: 0;
+            padding: .5vmin; line-height: 0;
         }
         .qr-img { display: block; width: 7vmin; height: 7vmin; }
     </style>
@@ -375,12 +392,18 @@
             <div class="buttons-grid" id="grid"></div>
         </div>
 
-        <button class="stop-btn" id="stopBtn">◼ &nbsp; ОСТАНОВИТЬ</button>
+        <!-- кнопки управления -->
+        <div class="controls">
+            <button class="icon-btn" id="snowBtn"   title="Снег">❄</button>
+            <button class="icon-btn stop-icon" id="stopBtn" title="Остановить">◼</button>
+            <button class="icon-btn" id="leavesBtn"    title="Листья">🍂</button>
+            <button class="icon-btn" id="wakeLockBtn" title="Экран не гаснет">☀</button>
+        </div>
 
         <div class="footer">
-            <div class="footer-left">
+            <div class="footer-center">
                 <img class="footer-ring" src="images/3.png" alt="">
-                <span class="footer-text">Школа Креативных Индустрий</span>
+                <span class="footer-text">Школа Креативных Индустрий, г. Нестеров</span>
             </div>
             <div class="qr-wrap">
                 <img class="qr-img" src="images/2.png" alt="VK QR">
@@ -631,7 +654,124 @@ function setDisplay(text, playing) {
     name.classList.toggle('active', playing);
     document.getElementById('dispTime').classList.toggle('active', playing);
     if (!playing) document.getElementById('dispTime').textContent = '--:--';
+    if (typeof ornamentsPlaying === 'function') ornamentsPlaying(playing);
 }
+
+/* ══ СНЕГ ══ */
+const snowCanvas = document.createElement('canvas');
+snowCanvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100;';
+document.body.appendChild(snowCanvas);
+const snowCtx = snowCanvas.getContext('2d');
+function resizeSnow() { snowCanvas.width = innerWidth; snowCanvas.height = innerHeight; }
+resizeSnow();
+window.addEventListener('resize', resizeSnow);
+
+const flakes = Array.from({length: 72}, () => ({
+    x:     Math.random() * innerWidth,
+    y:     Math.random() * innerHeight,
+    r:     Math.random() * 2.5 + 0.8,
+    speed: Math.random() * 0.8 + 0.25,
+    drift: Math.random() * 0.4 - 0.2,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleSpd: Math.random() * 0.025 + 0.005,
+    opacity: Math.random() * 0.55 + 0.2,
+}));
+
+let snowOn  = true;
+let snowRaf = null;
+
+function snowLoop() {
+    snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+    flakes.forEach(f => {
+        f.wobble += f.wobbleSpd;
+        f.x += f.drift + Math.sin(f.wobble) * 0.4;
+        f.y += f.speed;
+        if (f.y > innerHeight + 8) { f.y = -8; f.x = Math.random() * innerWidth; }
+        if (f.x >  innerWidth + 8) f.x = -8;
+        if (f.x < -8)              f.x = innerWidth + 8;
+        snowCtx.save();
+        snowCtx.globalAlpha = f.opacity;
+        snowCtx.fillStyle   = '#fff';
+        snowCtx.shadowBlur  = 5;
+        snowCtx.shadowColor = 'rgba(255,255,255,.6)';
+        snowCtx.beginPath();
+        snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        snowCtx.fill();
+        snowCtx.restore();
+    });
+    snowRaf = requestAnimationFrame(snowLoop);
+}
+snowLoop();
+
+const snowBtn = document.getElementById('snowBtn');
+snowBtn.classList.add('active');
+snowBtn.addEventListener('click', () => {
+    snowOn = !snowOn;
+    snowBtn.classList.toggle('active', snowOn);
+    if (snowOn) { snowLoop(); }
+    else { cancelAnimationFrame(snowRaf); snowRaf = null; snowCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); }
+});
+
+/* ══ ЛИСТЬЯ ══ */
+const leafCanvas = document.createElement('canvas');
+leafCanvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:101;';
+document.body.appendChild(leafCanvas);
+const leafCtx = leafCanvas.getContext('2d');
+function resizeLeaf() { leafCanvas.width = innerWidth; leafCanvas.height = innerHeight; }
+resizeLeaf();
+window.addEventListener('resize', resizeLeaf);
+
+const LEAF_COLS = ['#F71015','#FF6600','#FFAA00','#CC3300','#FF8C00','#E85000'];
+const leafArr = Array.from({length: 38}, () => ({
+    x:         Math.random() * innerWidth,
+    y:         Math.random() * innerHeight,
+    rx:        Math.random() * 7 + 5,
+    ry:        Math.random() * 4 + 2.5,
+    speed:     Math.random() * 1.1 + 0.5,
+    drift:     Math.random() * 1.0 - 0.5,
+    wobble:    Math.random() * Math.PI * 2,
+    wobbleSpd: Math.random() * 0.028 + 0.008,
+    rot:       Math.random() * Math.PI * 2,
+    rotSpd:    (Math.random() - 0.5) * 0.05,
+    opacity:   Math.random() * 0.45 + 0.35,
+    col:       LEAF_COLS[Math.floor(Math.random() * LEAF_COLS.length)],
+}));
+
+let leavesOn  = false;
+let leavesRaf = null;
+
+function leafLoop() {
+    leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
+    leafArr.forEach(l => {
+        l.wobble += l.wobbleSpd;
+        l.rot    += l.rotSpd;
+        l.x      += l.drift + Math.sin(l.wobble) * 0.9;
+        l.y      += l.speed;
+        if (l.y > innerHeight + 14) { l.y = -14; l.x = Math.random() * innerWidth; }
+        if (l.x >  innerWidth + 14) l.x = -14;
+        if (l.x < -14)              l.x = innerWidth + 14;
+        leafCtx.save();
+        leafCtx.translate(l.x, l.y);
+        leafCtx.rotate(l.rot);
+        leafCtx.globalAlpha = l.opacity;
+        leafCtx.fillStyle   = l.col;
+        leafCtx.shadowBlur  = 5;
+        leafCtx.shadowColor = l.col;
+        leafCtx.beginPath();
+        leafCtx.ellipse(0, 0, l.rx, l.ry, 0, 0, Math.PI * 2);
+        leafCtx.fill();
+        leafCtx.restore();
+    });
+    leavesRaf = requestAnimationFrame(leafLoop);
+}
+
+const leavesBtn = document.getElementById('leavesBtn');
+leavesBtn.addEventListener('click', () => {
+    leavesOn = !leavesOn;
+    leavesBtn.classList.toggle('active', leavesOn);
+    if (leavesOn) { leafLoop(); }
+    else { cancelAnimationFrame(leavesRaf); leavesRaf = null; leafCtx.clearRect(0,0,leafCanvas.width,leafCanvas.height); }
+});
 
 /* ══ ПАРАЛЛАКС (ГИРОСКОП / МЫШЬ) ══ */
 const _woman = document.querySelector('.woman-corner');
@@ -677,6 +817,131 @@ document.addEventListener('mousemove', e => {
     if (_title)  _title.style.transform  = `translate(${-pcx * 10}px, ${-pcy * 6}px)`;
     if (_bwrap)  _bwrap.style.transform  = `translate(${pcx * 5}px, ${pcy * 3}px)`;
     requestAnimationFrame(parallaxLoop);
+})();
+
+/* ══ WAKE LOCK ══ */
+let wakeLock = null, wakeLockOn = false;
+const wakeLockBtn = document.getElementById('wakeLockBtn');
+
+async function toggleWakeLock() {
+    if (!('wakeLock' in navigator)) { wakeLockBtn.title = 'Не поддерживается'; return; }
+    if (wakeLockOn) {
+        await wakeLock?.release();
+        wakeLock = null; wakeLockOn = false;
+    } else {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLockOn = true;
+            wakeLock.addEventListener('release', () => {
+                wakeLockOn = false;
+                wakeLockBtn.classList.remove('active');
+            });
+        } catch(e) {}
+    }
+    wakeLockBtn.classList.toggle('active', wakeLockOn);
+}
+wakeLockBtn.addEventListener('click', toggleWakeLock);
+
+/* восстановить wake lock при возврате на вкладку */
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLockOn && document.visibilityState === 'visible') {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+});
+
+/* ══ ХОХЛОМСКИЕ УЗОРЫ ══ */
+(function() {
+    const NS   = 'http://www.w3.org/2000/svg';
+    const SIZE = 130;
+
+    /* пути (начало из угла top-left, viewBox 0 0 130 130) */
+    const VINE  = 'M 6,6 C 8,42 42,48 56,28 C 70,8 90,34 80,58 C 70,82 44,88 50,118';
+    const BR1   = 'M 56,28 C 74,12 102,18 116,6';
+    const BR2   = 'M 80,58 C 100,44 120,50 126,38';
+    const LEAF1 = 'M 56,28 C 48,18 46,10 56,8 C 66,6 68,18 62,26 Z';
+    const LEAF2 = 'M 80,58 C 72,48 72,40 80,38 C 88,36 90,48 84,56 Z';
+    const BERRIES = [
+        {cx:116,cy:6,r:6},{cx:122,cy:12,r:3.5},{cx:110,cy:12,r:3.5},
+        {cx:126,cy:38,r:5.5},{cx:122,cy:44,r:3.5},
+        {cx:50,cy:118,r:7},{cx:43,cy:113,r:4},{cx:57,cy:113,r:4},
+    ];
+
+    /* 4 угла: позиция + CSS-трансформ для зеркалирования */
+    const CORNERS = [
+        ['left:0;top:0',        ''],
+        ['right:0;top:0',       'scaleX(-1)'],
+        ['left:0;bottom:0',     'scaleY(-1)'],
+        ['right:0;bottom:0',    'scale(-1,-1)'],
+    ];
+
+    const animPaths = [];
+
+    CORNERS.forEach(([pos, tfm]) => {
+        const svg = document.createElementNS(NS, 'svg');
+        svg.classList.add('khokhloma-ornament');
+        svg.setAttribute('viewBox', `0 0 ${SIZE} ${SIZE}`);
+        svg.setAttribute('width',  SIZE);
+        svg.setAttribute('height', SIZE);
+        svg.style.cssText = `position:fixed;pointer-events:none;z-index:98;opacity:0.65;transition:opacity .8s;`;
+        pos.split(';').forEach(s => {
+            const [k,v] = s.split(':');
+            if (k && v) svg.style[k.trim()] = v.trim();
+        });
+        if (tfm) svg.style.transform = tfm;
+
+        function path(d, stroke, w) {
+            const p = document.createElementNS(NS, 'path');
+            p.setAttribute('d', d); p.setAttribute('fill', 'none');
+            p.setAttribute('stroke', stroke); p.setAttribute('stroke-width', w);
+            p.setAttribute('stroke-linecap', 'round');
+            return p;
+        }
+        function filled(d, fill) {
+            const p = document.createElementNS(NS, 'path');
+            p.setAttribute('d', d); p.setAttribute('fill', fill);
+            return p;
+        }
+
+        const vine  = path(VINE, '#C8A200', 2.5);
+        const br1   = path(BR1,  '#C8A200', 2);
+        const br2   = path(BR2,  '#B09000', 2);
+        svg.append(vine, br1, br2, filled(LEAF1,'#8B7000'), filled(LEAF2,'#8B7000'));
+
+        BERRIES.forEach(({cx,cy,r}) => {
+            const c = document.createElementNS(NS, 'circle');
+            c.setAttribute('cx',cx); c.setAttribute('cy',cy);
+            c.setAttribute('r',r);   c.setAttribute('fill','#F71015');
+            svg.appendChild(c);
+            const h = document.createElementNS(NS, 'circle');
+            h.setAttribute('cx', cx - r*.3); h.setAttribute('cy', cy - r*.3);
+            h.setAttribute('r', r*.35); h.setAttribute('fill','rgba(255,220,100,.55)');
+            svg.appendChild(h);
+        });
+
+        document.body.appendChild(svg);
+
+        [vine, br1, br2].forEach(p => {
+            const len = p.getTotalLength();
+            p.style.strokeDasharray  = len;
+            p.style.strokeDashoffset = len;
+            animPaths.push(p);
+        });
+    });
+
+    /* рисуем при загрузке */
+    setTimeout(() => {
+        animPaths.forEach((p, i) => {
+            p.style.transition = `stroke-dashoffset ${1.6 + i * 0.06}s ease`;
+            p.style.strokeDashoffset = '0';
+        });
+    }, 400);
+
+    /* подсветка при музыке — вызывается из setDisplay */
+    window.ornamentsPlaying = playing => {
+        document.querySelectorAll('.khokhloma-ornament').forEach(s => {
+            s.style.opacity = playing ? '0.92' : '0.65';
+        });
+    };
 })();
 
 /* ══ FULLSCREEN (клавиша F / двойной тап по заголовку) ══ */
