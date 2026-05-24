@@ -287,8 +287,8 @@ async function loadSongs() {
         const files = await api('GET', '/api/songs');
         songs.forEach(s => { s.name = ''; s.file = ''; });
         files.forEach(f => {
-            /* формат N(Название).ext  ИЛИ  N.ext */
-            const m = f.match(/^(\d+)(?:\(([^)]+)\))?\.(\w+)$/i);
+            /* формат N(Любое название с (вложенными) скобками).ext  ИЛИ  N.ext */
+            const m = f.match(/^(\d+)(?:\((.+)\))?\.(\w+)$/i);
             if (!m) return;
             const num = +m[1], name = m[2] || '', ext = m[3].toLowerCase();
             if (num < 1 || num > 9 || !EXTS.includes(ext)) return;
@@ -495,7 +495,8 @@ document.getElementById('modalBg').addEventListener('click', e => {
 });
 
 async function confirmUpload() {
-    if (!pendingFile || !selectedSlot) return;
+    if (!pendingFile) return;
+    if (!selectedSlot) { toast('Выберите слот (кнопку I–IX)', true); return; }
     const name = document.getElementById('modalName').value.trim();
     if (!name) { document.getElementById('modalName').focus(); return; }
 

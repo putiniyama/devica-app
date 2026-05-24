@@ -666,7 +666,7 @@ function setDisplay(text, playing) {
         const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         [...doc.querySelectorAll('a[href]')].forEach(a => {
             const href = decodeURIComponent(a.getAttribute('href') || '').replace(/^.*\//, '');
-            const m = href.match(/^(\d+)(?:\(([^)]+)\))?\.(\w+)$/i);
+            const m = href.match(/^(\d+)(?:\((.+)\))?\.(\w+)$/i);
             if (!m) return;
             const num = +m[1], name = m[2] || '', ext = m[3].toLowerCase();
             const song = SONGS.find(s => s.num === num);
