@@ -397,7 +397,7 @@
             <button class="icon-btn" id="snowBtn"   title="Снег">❄</button>
             <button class="icon-btn stop-icon" id="stopBtn" title="Остановить">◼</button>
             <button class="icon-btn" id="leavesBtn"    title="Листья">🍂</button>
-            <button class="icon-btn active" id="ornamentsBtn" title="Узоры">✾</button>
+            <button class="icon-btn" id="ornamentsBtn" title="Узоры">✾</button>
             <button class="icon-btn" id="wakeLockBtn" title="Экран не гаснет">☀</button>
         </div>
 
@@ -678,7 +678,7 @@ const flakes = Array.from({length: 72}, () => ({
     opacity: Math.random() * 0.55 + 0.2,
 }));
 
-let snowOn  = true;
+let snowOn  = false;
 let snowRaf = null;
 
 function snowLoop() {
@@ -705,7 +705,6 @@ function snowLoop() {
 snowLoop();
 
 const snowBtn = document.getElementById('snowBtn');
-snowBtn.classList.add('active');
 snowBtn.addEventListener('click', () => {
     snowOn = !snowOn;
     snowBtn.classList.toggle('active', snowOn);
@@ -844,15 +843,24 @@ async function toggleWakeLock() {
 wakeLockBtn.addEventListener('click', toggleWakeLock);
 
 /* ══ TOGGLE УЗОРОВ ══ */
-let ornamentsOn = true;
+let ornamentsOn = false;
+let ornamentsDrawn = false;
 const ornamentsBtn = document.getElementById('ornamentsBtn');
 ornamentsBtn.addEventListener('click', () => {
     ornamentsOn = !ornamentsOn;
     ornamentsBtn.classList.toggle('active', ornamentsOn);
-    document.querySelectorAll('.khokhloma-ornament').forEach(s => {
-        s.style.opacity = ornamentsOn ? '0.65' : '0';
-        s.style.pointerEvents = 'none';
-    });
+    if (ornamentsOn) {
+        document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0.65');
+        if (!ornamentsDrawn) {
+            ornamentsDrawn = true;
+            animPaths.forEach((p, i) => {
+                p.style.transition = `stroke-dashoffset ${1.6 + i * 0.06}s ease`;
+                p.style.strokeDashoffset = '0';
+            });
+        }
+    } else {
+        document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0');
+    }
 });
 
 /* восстановить wake lock при возврате на вкладку */
@@ -887,7 +895,7 @@ document.addEventListener('visibilitychange', async () => {
         ['right:0;bottom:0',    'scale(-1,-1)'],
     ];
 
-    const animPaths = [];
+    window.animPaths = [];
 
     CORNERS.forEach(([pos, tfm]) => {
         const svg = document.createElementNS(NS, 'svg');
@@ -937,17 +945,12 @@ document.addEventListener('visibilitychange', async () => {
             const len = p.getTotalLength();
             p.style.strokeDasharray  = len;
             p.style.strokeDashoffset = len;
-            animPaths.push(p);
+            window.animPaths.push(p);
         });
     });
 
-    /* рисуем при загрузке */
-    setTimeout(() => {
-        animPaths.forEach((p, i) => {
-            p.style.transition = `stroke-dashoffset ${1.6 + i * 0.06}s ease`;
-            p.style.strokeDashoffset = '0';
-        });
-    }, 400);
+    /* узоры скрыты по умолчанию */
+    document.querySelectorAll('.khokhloma-ornament').forEach(s => s.style.opacity = '0');
 
     /* подсветка при музыке — вызывается из setDisplay */
     window.ornamentsPlaying = playing => {
