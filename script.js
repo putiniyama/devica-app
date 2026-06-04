@@ -188,7 +188,7 @@ function tryPlay(song, btn, ring, candidates, idx, token) {
             startVisualizer(audio);
             if (lightOn && !lightRaf) lightRaf = requestAnimationFrame(lightLoop);
             startProgress();
-            audio.addEventListener('ended', stopAll, { once: true });
+            audio.addEventListener('ended', () => stopAll(), { once: true });
         })
         .catch(() => { clearTimeout(playTimer); audio.src = ''; tryPlay(song, btn, ring, candidates, idx + 1, token); });
 }
