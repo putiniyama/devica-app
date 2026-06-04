@@ -12,8 +12,11 @@ snapshot() {
 
 start_server() {
     local port="${PORT:-8787}"
+    local ip
+    ip=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "—")
     echo ""
     echo "  Сервер:  http://localhost:$port/"
+    [ "$ip" != "—" ] && echo "  Сеть:    http://$ip:$port/"
     echo "  Авто-обновление songs.json при изменении sound/"
     echo "  Остановить: Ctrl+C"
     echo ""
