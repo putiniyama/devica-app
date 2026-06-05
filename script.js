@@ -20,6 +20,8 @@ let hasRealViz = false;
 let trackDuration = 0;
 let loadToken = 0;
 let currentLoadingBtn = null;
+/* элементы, уже подключённые к Web Audio (source можно создать лишь раз) */
+const webAudioConnected = new WeakSet();
 
 /* ══ ПОЛОСЫ ВИЗУАЛИЗАТОРА ══ */
 const vizEl = document.getElementById('visualizer');
@@ -41,11 +43,16 @@ function tryConnectWebAudio(audio) {
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 64;
             analyser.smoothingTimeConstant = 0.78;
+            analyser.connect(audioCtx.destination);
         }
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        const src = audioCtx.createMediaElementSource(audio);
-        src.connect(analyser);
-        analyser.connect(audioCtx.destination);
+        /* createMediaElementSource допустим лишь раз на элемент —
+           для кэшированного аудио переиспользуем прежнее подключение */
+        if (!webAudioConnected.has(audio)) {
+            const src = audioCtx.createMediaElementSource(audio);
+            src.connect(analyser);
+            webAudioConnected.add(audio);
+        }
         return true;
     } catch (e) {
         return false; /* audio играет нативно — ничего не сломано */
@@ -150,6 +157,13 @@ function handleClick(song, btn, ring) {
     }
     stopAll(); /* stopAll уже инкрементит loadToken если что-то грузилось */
     const token = ++loadToken;
+
+    /* уже загружали раньше — играем из кэша, без повторной загрузки */
+    if (song._audio) {
+        playAudio(song, btn, ring, song._audio, token, null);
+        return;
+    }
+
     currentLoadingBtn = btn;
     btn.classList.add('loading');
     const candidates = song.file
@@ -168,16 +182,29 @@ function tryPlay(song, btn, ring, candidates, idx, token) {
     }
 
     const audio = new Audio(candidates[idx]);
+    audio.preload = 'auto'; /* подгрузить целиком, чтобы повтор шёл из кэша */
     audio.addEventListener('loadedmetadata', () => { trackDuration = audio.duration; }, { once: true });
 
-    /* Promise.race: если audio.play() завис — через 4с переходим к следующему кандидату */
+    /* следующий кандидат при ошибке/таймауте загрузки */
+    playAudio(song, btn, ring, audio, token, () => {
+        audio.src = '';
+        tryPlay(song, btn, ring, candidates, idx + 1, token);
+    });
+}
+
+/* Запуск конкретного <audio>. onFail (если задан) — что делать при ошибке. */
+function playAudio(song, btn, ring, audio, token, onFail) {
+    audio.currentTime = 0;
+
+    /* Promise.race: если audio.play() завис — через 4с считаем неудачей */
     let playTimer;
     const timeout = new Promise((_, rej) => { playTimer = setTimeout(() => rej(new Error('timeout')), 4000); });
 
     Promise.race([audio.play(), timeout])
         .then(() => {
             clearTimeout(playTimer);
-            if (token !== loadToken) { audio.pause(); audio.src = ''; btn.classList.remove('loading'); currentLoadingBtn = null; return; }
+            if (token !== loadToken) { audio.pause(); btn.classList.remove('loading'); currentLoadingBtn = null; return; }
+            song._audio = audio; /* кэшируем для мгновенного повтора */
             currentLoadingBtn = null;
             btn.classList.remove('loading');
             currentAudio = audio;
@@ -190,7 +217,18 @@ function tryPlay(song, btn, ring, candidates, idx, token) {
             startProgress();
             audio.addEventListener('ended', () => stopAll(), { once: true });
         })
-        .catch(() => { clearTimeout(playTimer); audio.src = ''; tryPlay(song, btn, ring, candidates, idx + 1, token); });
+        .catch(() => {
+            clearTimeout(playTimer);
+            if (onFail) { onFail(); return; }
+            /* кэш не сыграл — сбрасываем и грузим заново */
+            song._audio = null;
+            currentLoadingBtn = btn;
+            btn.classList.add('loading');
+            const candidates = song.file
+                ? [`sound/${encodeURIComponent(song.file)}`]
+                : EXTS.map(e => `sound/${song.num}.${e}`);
+            tryPlay(song, btn, ring, candidates, 0, token);
+        });
 }
 
 function stopAll(resetFx = false) {
