@@ -5,7 +5,7 @@
 
 Создаёт sound/songs.json который читает приложение.
 """
-import os, json, re
+import os, json, re, unicodedata
 
 BASE  = os.path.dirname(os.path.abspath(__file__))
 SOUND = os.path.join(BASE, 'sound')
@@ -21,6 +21,10 @@ for f in sorted(os.listdir(SOUND)):
     num, name, ext = int(m[1]), m[2] or '', m[3].lower()
     if num < 1 or num > 9 or ext not in EXTS:
         continue
+    # macOS отдаёт имена в форме NFD, а git/GitHub Pages хранят их в NFC.
+    # Без нормализации песни с буквами й/ё дают 404 после деплоя.
+    name = unicodedata.normalize('NFC', name)
+    f    = unicodedata.normalize('NFC', f)
     songs.append({'num': num, 'name': name, 'file': f})
 
 songs.sort(key=lambda s: s['num'])
